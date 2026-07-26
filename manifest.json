@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Battle Royale",
+  "description": "Fight for your tabs.",
+  "version": "1.0",
+
+  "permissions": [
+    "tabs",
+    "storage",
+    "notifications",
+    "alarms",
+    "scripting"
+  ],
+
+  "host_permissions": [
+    "<all_urls>"
+  ],
+
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Tab Battle Royale"
+  },
+
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  }
+}
