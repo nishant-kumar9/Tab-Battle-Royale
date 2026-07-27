@@ -1,4 +1,4 @@
-<img width="1600" height="960" alt="23" src="https://github.com/user-attachments/assets/667ec6d3-4729-40c7-9454-81e6af0a000c" />
+
 # ⚔️ Tab Battle Royale
 
 Welcome to Tab Battle Royale! This Chrome Extension gamifies your tab hoarding habits by forcing inactive tabs into a life-or-death battle for survival. 
