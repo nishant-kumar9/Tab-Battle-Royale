@@ -19,14 +19,40 @@
       <section class="card">
         <h2 class="card__title">Timers</h2>
         <div class="field">
-          <label for="inactiveMinutes">Inactive Minutes</label>
+          <label>Inactive Threshold</label>
           <p class="field__hint">How long a tab can sit idle before it's called into battle.</p>
-          <input type="number" id="inactiveMinutes" min="1" step="1" />
+          <div class="duration-row">
+            <div class="duration-field">
+              <input type="number" id="inactiveHours" min="0" step="1" />
+              <span class="duration-unit">hr</span>
+            </div>
+            <div class="duration-field">
+              <input type="number" id="inactiveMinutes" min="0" step="1" />
+              <span class="duration-unit">min</span>
+            </div>
+            <div class="duration-field">
+              <input type="number" id="inactiveSeconds" min="0" step="1" />
+              <span class="duration-unit">sec</span>
+            </div>
+          </div>
         </div>
         <div class="field">
-          <label for="countdownSeconds">Countdown Seconds</label>
+          <label>Countdown Timer</label>
           <p class="field__hint">How long the tab has to respond before it's deleted.</p>
-          <input type="number" id="countdownSeconds" min="1" step="1" />
+          <div class="duration-row">
+            <div class="duration-field">
+              <input type="number" id="countdownHours" min="0" step="1" />
+              <span class="duration-unit">hr</span>
+            </div>
+            <div class="duration-field">
+              <input type="number" id="countdownMinutes" min="0" step="1" />
+              <span class="duration-unit">min</span>
+            </div>
+            <div class="duration-field">
+              <input type="number" id="countdownSeconds" min="0" step="1" />
+              <span class="duration-unit">sec</span>
+            </div>
+          </div>
         </div>
       </section>
 

@@ -3,8 +3,9 @@
  * Service worker for Tab Battle Royale.
  *
  * - Runs a minute-by-minute chrome.alarms sweep over open tabs.
- * - Picks one eligible inactive tab at a time and starts a "battle":
- *   a desktop notification with a live countdown and two action buttons.
+ * - Picks one eligible inactive tab at a time and opens a small in-browser
+ *   "battle" popup window (battle.html) with a live countdown and two
+ *   action buttons — no OS-level chrome.notifications involved.
  * - Resolves each battle exactly once (save / kill / timeout / dismiss),
  *   updating stats and achievements in chrome.storage.local.
  */
@@ -12,12 +13,8 @@
 importScripts("utils.js");
 
 var CHECK_ALARM_NAME = "tbr_check_tabs";
-
-// In-memory bookkeeping for live countdowns. These are best-effort: if the
-// service worker is terminated mid-countdown, the next minute's alarm sweep
-// (cleanupExpiredBattles) will detect and resolve any battle whose
-// expiresAt has already passed, so no tab battle is left stuck forever.
-var battleIntervals = {}; // notificationId -> intervalId (chrome.alarms not used for sub-minute ticks)
+var BATTLE_WINDOW_WIDTH = 420;
+var BATTLE_WINDOW_HEIGHT = 400;
 
 // ---------------------------------------------------------------------
 // Lifecycle
@@ -26,12 +23,12 @@ var battleIntervals = {}; // notificationId -> intervalId (chrome.alarms not use
 chrome.runtime.onInstalled.addListener(function () {
   initializeDefaults();
   chrome.alarms.create(CHECK_ALARM_NAME, { periodInMinutes: 1 });
-  seedTabActivityForAllTabs();
+  resetTabActivityToCurrentTabs();
 });
 
 chrome.runtime.onStartup.addListener(function () {
   chrome.alarms.create(CHECK_ALARM_NAME, { periodInMinutes: 1 });
-  seedTabActivityForAllTabs();
+  resetTabActivityToCurrentTabs();
 });
 
 async function initializeDefaults() {
@@ -41,19 +38,33 @@ async function initializeDefaults() {
   await TBR.setStats(stats);
 }
 
-async function seedTabActivityForAllTabs() {
+/**
+ * Rebuilds the tab-activity map from scratch using only the tabs that are
+ * actually open right now.
+ *
+ * This matters because Chrome can and does reuse tab IDs across browser
+ * restarts. If we only ever merged new tabs into the old activity map
+ * (instead of resetting it), a freshly opened tab could inherit a
+ * years-old timestamp left behind by a *different* tab that used to have
+ * the same ID — making it look ancient and eligible for battle the moment
+ * it opened. Resetting on every browser startup (and on install) removes
+ * that stale-ID collision entirely.
+ */
+async function resetTabActivityToCurrentTabs() {
   try {
     var tabs = await chrome.tabs.query({});
-    var activity = await TBR.getTabActivity();
     var now = Date.now();
+    var freshActivity = {};
     tabs.forEach(function (tab) {
-      if (!(tab.id in activity)) {
-        activity[tab.id] = now;
-      }
+      freshActivity[tab.id] = now;
     });
-    await TBR.setTabActivity(activity);
+    await TBR.setTabActivity(freshActivity);
+
+    // Also drop any battle records left over from a previous session —
+    // their windows no longer exist.
+    await TBR.setActiveBattles({});
   } catch (e) {
-    console.error("Tab Battle Royale: failed to seed tab activity", e);
+    console.error("Tab Battle Royale: failed to reset tab activity", e);
   }
 }
 
@@ -91,17 +102,33 @@ chrome.tabs.onRemoved.addListener(async function (tabId) {
   }
 
   // If a battle was in progress for this tab and the user manually closed
-  // it out from under the notification, resolve that battle as a kill so
+  // it out from under the battle window, resolve that battle as a kill so
   // stats stay consistent, without trying to remove the (already gone) tab.
   try {
     var battles = await TBR.getActiveBattles();
-    for (var notificationId in battles) {
-      if (battles[notificationId].tabId === tabId && !battles[notificationId].resolved) {
-        await resolveBattle(notificationId, "kill", { skipTabRemoval: true });
+    for (var battleId in battles) {
+      if (battles[battleId].tabId === tabId && !battles[battleId].resolved) {
+        await resolveBattle(battleId, "kill", { skipTabRemoval: true });
       }
     }
   } catch (e) {
     console.error("Tab Battle Royale: onRemoved battle cleanup failed", e);
+  }
+});
+
+// If the user closes the battle popup window itself (the "X" button)
+// without clicking Save or Delete, that's a manual dismissal — the tab
+// loses.
+chrome.windows.onRemoved.addListener(async function (windowId) {
+  try {
+    var battles = await TBR.getActiveBattles();
+    for (var battleId in battles) {
+      if (battles[battleId].windowId === windowId && !battles[battleId].resolved) {
+        await resolveBattle(battleId, "dismiss");
+      }
+    }
+  } catch (e) {
+    console.error("Tab Battle Royale: windows.onRemoved handling failed", e);
   }
 });
 
@@ -111,7 +138,9 @@ chrome.tabs.onRemoved.addListener(async function (tabId) {
 
 chrome.alarms.onAlarm.addListener(function (alarm) {
   if (alarm.name === CHECK_ALARM_NAME) {
-    cleanupExpiredBattles().then(runBattleCheck);
+    cleanupExpiredBattles()
+      .then(pruneStaleTabActivity)
+      .then(runBattleCheck);
   }
 });
 
@@ -123,12 +152,41 @@ async function cleanupExpiredBattles() {
     for (var i = 0; i < ids.length; i++) {
       var id = ids[i];
       var battle = battles[id];
-      if (!battle.resolved && battle.expiresAt <= now) {
+      // A small grace buffer accounts for the battle window's own timer
+      // firing a second or two late; the alarm is purely a backstop.
+      if (!battle.resolved && battle.expiresAt + 5000 <= now) {
         await resolveBattle(id, "timeout");
       }
     }
   } catch (e) {
     console.error("Tab Battle Royale: cleanupExpiredBattles failed", e);
+  }
+}
+
+/**
+ * Removes tab-activity entries for tabs that no longer exist, so stale
+ * IDs never have a chance to collide with a reused ID down the line.
+ */
+async function pruneStaleTabActivity() {
+  try {
+    var tabs = await chrome.tabs.query({});
+    var liveIds = {};
+    tabs.forEach(function (tab) {
+      liveIds[tab.id] = true;
+    });
+    var activity = await TBR.getTabActivity();
+    var changed = false;
+    Object.keys(activity).forEach(function (tabId) {
+      if (!liveIds[tabId]) {
+        delete activity[tabId];
+        changed = true;
+      }
+    });
+    if (changed) {
+      await TBR.setTabActivity(activity);
+    }
+  } catch (e) {
+    console.error("Tab Battle Royale: pruneStaleTabActivity failed", e);
   }
 }
 
@@ -151,7 +209,11 @@ async function runBattleCheck() {
     tabs.forEach(function (tab) {
       var evalResult = evaluateEligibility(tab, config, activity, now);
       if (evalResult.eligible) {
-        candidates.push({ tab: tab, isBlacklisted: evalResult.isBlacklisted, minutesInactive: evalResult.minutesInactive });
+        candidates.push({
+          tab: tab,
+          isBlacklisted: evalResult.isBlacklisted,
+          secondsInactive: evalResult.secondsInactive
+        });
       }
     });
 
@@ -162,7 +224,7 @@ async function runBattleCheck() {
       if (a.isBlacklisted !== b.isBlacklisted) {
         return a.isBlacklisted ? -1 : 1;
       }
-      return b.minutesInactive - a.minutesInactive;
+      return b.secondsInactive - a.secondsInactive;
     });
 
     await startBattle(candidates[0].tab, config);
@@ -180,15 +242,21 @@ function evaluateEligibility(tab, config, activity, now) {
   var hostname = TBR.getHostname(tab.url || "");
   if (TBR.hostnameMatchesList(hostname, config.whitelist)) return { eligible: false };
 
-  var lastActive = activity[tab.id] || now;
-  var minutesInactive = (now - lastActive) / 60000;
+  // If we have no recorded activity for this tab (shouldn't normally
+  // happen — onCreated/reset should always seed it), treat it as freshly
+  // active rather than assuming it's ancient. This is the same
+  // fail-safe direction as the startup reset: when in doubt, don't kill.
+  var lastActive = Object.prototype.hasOwnProperty.call(activity, tab.id) ? activity[tab.id] : now;
+  var secondsInactive = (now - lastActive) / 1000;
   var isBlacklisted = TBR.hostnameMatchesList(hostname, config.blacklist);
-  var threshold = isBlacklisted ? Math.max(1, config.inactiveMinutes / 2) : config.inactiveMinutes;
+  var threshold = isBlacklisted
+    ? Math.max(TBR.MIN_INACTIVE_THRESHOLD_SECONDS, config.inactiveThresholdSeconds / 2)
+    : config.inactiveThresholdSeconds;
 
   return {
-    eligible: minutesInactive >= threshold,
+    eligible: secondsInactive >= threshold,
     isBlacklisted: isBlacklisted,
-    minutesInactive: minutesInactive
+    secondsInactive: secondsInactive
   };
 }
 
@@ -197,11 +265,11 @@ function evaluateEligibility(tab, config, activity, now) {
 // ---------------------------------------------------------------------
 
 async function startBattle(tab, config) {
-  var notificationId = "battle_" + tab.id + "_" + Date.now();
+  var battleId = "battle_" + tab.id + "_" + Date.now();
   var roast = TBR.pickRandomRoast();
-  var countdownSeconds = TBR.safeParseInt(config.countdownSeconds, TBR.DEFAULT_CONFIG.countdownSeconds);
+  var countdownSeconds = Math.max(TBR.MIN_COUNTDOWN_SECONDS, config.countdownSeconds);
   var expiresAt = Date.now() + countdownSeconds * 1000;
-  var title = tab.title && tab.title.length > 60 ? tab.title.slice(0, 57) + "..." : tab.title || "Untitled Tab";
+  var title = tab.title && tab.title.length > 70 ? tab.title.slice(0, 67) + "..." : tab.title || "Untitled Tab";
 
   var battle = {
     tabId: tab.id,
@@ -210,62 +278,38 @@ async function startBattle(tab, config) {
     roast: roast,
     expiresAt: expiresAt,
     countdownSeconds: countdownSeconds,
+    windowId: null,
     resolved: false
   };
 
   var battles = await TBR.getActiveBattles();
-  battles[notificationId] = battle;
+  battles[battleId] = battle;
   await TBR.setActiveBattles(battles);
 
-  await chrome.notifications.create(notificationId, {
-    type: "basic",
-    iconUrl: TBR.NOTIFICATION_ICON_BASE64,
-    title: "⚔️ BATTLE: " + title,
-    message: roast + " Respond in " + countdownSeconds + "s or it dies.",
-    priority: 2,
-    requireInteraction: true,
-    buttons: [{ title: "🛡️ Go to Tab & Save" }, { title: "💀 Delete Now" }]
-  });
+  var battleUrl = chrome.runtime.getURL("battle.html") + "?battleId=" + encodeURIComponent(battleId);
 
-  startCountdownTick(notificationId, countdownSeconds);
-}
+  try {
+    var win = await chrome.windows.create({
+      url: battleUrl,
+      type: "popup",
+      width: BATTLE_WINDOW_WIDTH,
+      height: BATTLE_WINDOW_HEIGHT,
+      focused: true
+    });
 
-// Runs an in-memory 1-second tick loop that live-updates the notification
-// text with the remaining time, mirroring a strict countdown timer. If the
-// service worker is asleep, this loop simply doesn't run — the alarm-based
-// cleanupExpiredBattles() sweep is the durable backstop that guarantees the
-// tab still dies on schedule.
-function startCountdownTick(notificationId, secondsLeft) {
-  clearInterval(battleIntervals[notificationId]);
-  var remaining = secondsLeft;
-
-  battleIntervals[notificationId] = setInterval(async function () {
-    remaining -= 1;
-
-    var battles = await TBR.getActiveBattles();
-    var battle = battles[notificationId];
-    if (!battle || battle.resolved) {
-      clearInterval(battleIntervals[notificationId]);
-      delete battleIntervals[notificationId];
-      return;
+    var refreshedBattles = await TBR.getActiveBattles();
+    if (refreshedBattles[battleId]) {
+      refreshedBattles[battleId].windowId = win.id;
+      await TBR.setActiveBattles(refreshedBattles);
     }
-
-    if (remaining <= 0) {
-      clearInterval(battleIntervals[notificationId]);
-      delete battleIntervals[notificationId];
-      await resolveBattle(notificationId, "timeout");
-      return;
-    }
-
-    try {
-      await chrome.notifications.update(notificationId, {
-        message: battle.roast + " Respond in " + remaining + "s or it dies."
-      });
-    } catch (e) {
-      // Notification may already be gone; the timeout branch above will
-      // still fire and resolve the battle safely.
-    }
-  }, 1000);
+  } catch (e) {
+    console.error("Tab Battle Royale: failed to open battle window", e);
+    // If we couldn't even show the battle window, don't leave the tab in
+    // limbo — just drop the battle record and try again next sweep.
+    var cleanupBattles = await TBR.getActiveBattles();
+    delete cleanupBattles[battleId];
+    await TBR.setActiveBattles(cleanupBattles);
+  }
 }
 
 /**
@@ -273,25 +317,26 @@ function startCountdownTick(notificationId, secondsLeft) {
  *   "save"    - user clicked Go to Tab & Save
  *   "kill"    - user clicked Delete Now
  *   "timeout" - countdown expired with no response
- *   "dismiss" - user swiped the notification away
+ *   "dismiss" - user closed the battle popup window without choosing
  */
-async function resolveBattle(notificationId, outcome, options) {
+async function resolveBattle(battleId, outcome, options) {
   options = options || {};
   var battles = await TBR.getActiveBattles();
-  var battle = battles[notificationId];
+  var battle = battles[battleId];
   if (!battle || battle.resolved) return;
 
   battle.resolved = true;
-  battles[notificationId] = battle;
+  battles[battleId] = battle;
   await TBR.setActiveBattles(battles);
 
-  clearInterval(battleIntervals[notificationId]);
-  delete battleIntervals[notificationId];
-
-  try {
-    await chrome.notifications.clear(notificationId);
-  } catch (e) {
-    // Already cleared/dismissed — safe to ignore.
+  // Close the battle window if it's still open (e.g. we're resolving via
+  // the timeout backstop rather than a user action inside the window).
+  if (battle.windowId !== null && battle.windowId !== undefined) {
+    try {
+      await chrome.windows.remove(battle.windowId);
+    } catch (e) {
+      // Already closed by the user — fine.
+    }
   }
 
   var stats = await TBR.getStats();
@@ -325,62 +370,32 @@ async function resolveBattle(notificationId, outcome, options) {
 
   // Remove the resolved battle record entirely once processed.
   var latestBattles = await TBR.getActiveBattles();
-  delete latestBattles[notificationId];
+  delete latestBattles[battleId];
   await TBR.setActiveBattles(latestBattles);
 
   var config = await TBR.getConfig();
   if (config.achievementsEnabled) {
-    var newlyUnlocked = await TBR.evaluateAchievements(stats);
-    newlyUnlocked.forEach(function (achievement) {
-      announceAchievement(achievement);
-    });
+    await TBR.evaluateAchievements(stats); // queues pending toasts for the popup
   }
 }
 
-function announceAchievement(achievement) {
-  var id = "achievement_" + achievement.id + "_" + Date.now();
-  chrome.notifications.create(id, {
-    type: "basic",
-    iconUrl: TBR.NOTIFICATION_ICON_BASE64,
-    title: "🏆 Achievement Unlocked: " + achievement.name,
-    message: achievement.description,
-    priority: 1
-  });
-}
-
 // ---------------------------------------------------------------------
-// Notification interaction handlers
-// ---------------------------------------------------------------------
-
-chrome.notifications.onButtonClicked.addListener(function (notificationId, buttonIndex) {
-  var outcome = buttonIndex === 0 ? "save" : "kill";
-  resolveBattle(notificationId, outcome);
-});
-
-chrome.notifications.onClosed.addListener(function (notificationId, byUser) {
-  if (byUser) {
-    // Manual dismissal (swipe away) counts as a loss for the tab.
-    resolveBattle(notificationId, "dismiss");
-  }
-});
-
-// ---------------------------------------------------------------------
-// Messages from popup / options (e.g. "Force Battle Now")
+// Messages from popup / options / battle window
 // ---------------------------------------------------------------------
 
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
-  if (message && message.type === "FORCE_BATTLE") {
+  if (!message || !message.type) return false;
+
+  if (message.type === "FORCE_BATTLE") {
     forceBattleOnCurrentTab().then(function (result) {
       sendResponse(result);
     });
     return true; // keep the message channel open for the async response
   }
 
-  if (message && message.type === "TOGGLE_ENABLED") {
-    TBR.getConfig().then(async function (config) {
-      config.enabled = !!message.enabled;
-      await TBR.setConfig(config);
-      sendResponse({ ok: true, enabled: config.enabled });
+  if (message.type === "RESOLVE_BATTLE") {
+    resolveBattle(message.battleId, message.outcome).then(function () {
+      sendResponse({ ok: true });
     });
     return true;
   }

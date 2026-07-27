@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>⚔️ Tab Battle</title>
+  <link rel="stylesheet" href="battle.css" />
+</head>
+<body>
+  <div class="battle">
+    <div class="battle__ring">
+      <img class="battle__crest" id="crestImg" alt="" />
+      <h1 class="battle__heading">BATTLE</h1>
+    </div>
+
+    <p class="battle__tab-title" id="tabTitle">Loading...</p>
+    <p class="battle__roast" id="roastText"></p>
+
+    <div class="battle__timer-wrap">
+      <div class="battle__timer-bar">
+        <div class="battle__timer-fill" id="timerFill"></div>
+      </div>
+      <p class="battle__timer-label">
+        Respond in <span id="secondsLeft">--</span>s or it dies.
+      </p>
+    </div>
+
+    <div class="battle__actions">
+      <button class="battle-btn battle-btn--save" id="saveBtn">
+        🛡️ Go to Tab &amp; Save
+      </button>
+      <button class="battle-btn battle-btn--kill" id="killBtn">
+        💀 Delete Now
+      </button>
+    </div>
+  </div>
+
+  <script src="utils.js"></script>
+  <script src="battle.js"></script>
+</body>
+</html>

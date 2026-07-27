@@ -33,6 +33,22 @@ async function loadAll() {
   await loadStats();
   await loadOpenTabCount();
   await loadGraveyard();
+  await showPendingAchievementToasts();
+}
+
+/**
+ * Achievement unlocks are queued by the background worker (no OS
+ * notification involved) and shown here the next time the popup opens.
+ */
+async function showPendingAchievementToasts() {
+  var pending = await TBR.getPendingToasts();
+  if (!pending || pending.length === 0) return;
+
+  // Only surface the most recent one in this tiny popup; clear the queue
+  // either way so it doesn't grow unbounded.
+  var latest = pending[pending.length - 1];
+  showToast(latest.title + " — " + latest.message, false);
+  await TBR.setPendingToasts([]);
 }
 
 async function loadConfigAndStatus() {
@@ -146,7 +162,7 @@ async function onForceBattle() {
       return;
     }
     if (response && response.ok) {
-      showToast("Battle triggered on the current tab.", false);
+      showToast("Battle window opened for the current tab.", false);
     } else {
       showToast((response && response.error) || "Could not start a battle.", true);
     }

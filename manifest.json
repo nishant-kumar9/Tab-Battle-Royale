@@ -1,11 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Tab Battle Royale",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Gamify tab management. Inactive tabs get 15 seconds to prove they still matter — or they die.",
   "permissions": [
     "alarms",
-    "notifications",
     "storage",
     "tabs",
     "sessions"

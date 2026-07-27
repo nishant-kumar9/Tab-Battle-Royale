@@ -1,0 +1,172 @@
+:root {
+  --bg-void: #08080d;
+  --bg-panel: #12121f;
+  --border-dim: #262640;
+  --neon-red: #ff003c;
+  --neon-cyan: #00f0ff;
+  --text-primary: #eef0ff;
+  --text-muted: #9494b8;
+  --font-display: "Consolas", "SFMono-Regular", "Menlo", monospace;
+  --font-body: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  background-image: radial-gradient(circle at 50% 0%, rgba(255, 0, 60, 0.14), transparent 55%),
+    repeating-linear-gradient(0deg, rgba(0, 240, 255, 0.02) 0px, rgba(0, 240, 255, 0.02) 1px, transparent 1px, transparent 3px);
+  overflow: hidden;
+}
+
+.battle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 22px 20px 18px;
+  gap: 10px;
+  height: 100%;
+}
+
+.battle__ring {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.battle__crest {
+  width: 34px;
+  height: 34px;
+  filter: drop-shadow(0 0 6px var(--neon-red));
+}
+
+.battle__heading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 4px;
+  font-weight: 700;
+  text-shadow: -1.5px 0 var(--neon-cyan), 1.5px 0 var(--neon-red);
+}
+
+.battle__tab-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 8px;
+}
+
+.battle__roast {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  max-width: 320px;
+  line-height: 1.4;
+}
+
+.battle__timer-wrap {
+  width: 100%;
+  max-width: 340px;
+  margin-top: 6px;
+}
+
+.battle__timer-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-dim);
+  overflow: hidden;
+}
+
+.battle__timer-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-red));
+  transition: width 1s linear;
+}
+
+.battle__timer-label {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  font-size: 12.5px;
+  color: var(--neon-red);
+  letter-spacing: 0.3px;
+}
+
+.battle__timer-label span {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.battle__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 340px;
+  margin-top: auto;
+}
+
+.battle-btn {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 13px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.battle-btn:active {
+  transform: scale(0.97);
+}
+
+.battle-btn--save {
+  background: linear-gradient(135deg, var(--neon-cyan), #007a85);
+  border-color: var(--neon-cyan);
+  color: #041012;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+}
+
+.battle-btn--save:hover {
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.55);
+}
+
+.battle-btn--kill {
+  background: linear-gradient(135deg, var(--neon-red), #7a0022);
+  border-color: var(--neon-red);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(255, 0, 60, 0.35);
+}
+
+.battle-btn--kill:hover {
+  box-shadow: 0 0 18px rgba(255, 0, 60, 0.55);
+}
+
+.battle-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}

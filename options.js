@@ -1,7 +1,8 @@
 /**
  * options.js
- * Loads and saves configuration, and renders the achievements grid based
- * on current stats.
+ * Loads and saves configuration (including the Hours/Minutes/Seconds
+ * duration pickers), and renders the achievements grid based on current
+ * stats.
  */
 
 document.addEventListener("DOMContentLoaded", init);
@@ -9,7 +10,11 @@ document.addEventListener("DOMContentLoaded", init);
 var els = {};
 
 function init() {
+  els.inactiveHours = document.getElementById("inactiveHours");
   els.inactiveMinutes = document.getElementById("inactiveMinutes");
+  els.inactiveSeconds = document.getElementById("inactiveSeconds");
+  els.countdownHours = document.getElementById("countdownHours");
+  els.countdownMinutes = document.getElementById("countdownMinutes");
   els.countdownSeconds = document.getElementById("countdownSeconds");
   els.ignorePinned = document.getElementById("ignorePinned");
   els.ignoreMedia = document.getElementById("ignoreMedia");
@@ -33,8 +38,16 @@ function init() {
 async function loadSettings() {
   var config = await TBR.getConfig();
 
-  els.inactiveMinutes.value = config.inactiveMinutes;
-  els.countdownSeconds.value = config.countdownSeconds;
+  var inactiveParts = TBR.fromTotalSeconds(config.inactiveThresholdSeconds);
+  els.inactiveHours.value = inactiveParts.hours;
+  els.inactiveMinutes.value = inactiveParts.minutes;
+  els.inactiveSeconds.value = inactiveParts.seconds;
+
+  var countdownParts = TBR.fromTotalSeconds(config.countdownSeconds);
+  els.countdownHours.value = countdownParts.hours;
+  els.countdownMinutes.value = countdownParts.minutes;
+  els.countdownSeconds.value = countdownParts.seconds;
+
   els.ignorePinned.checked = !!config.ignorePinned;
   els.ignoreMedia.checked = !!config.ignoreMedia;
   els.ignoreMuted.checked = !!config.ignoreMuted;
@@ -46,8 +59,11 @@ async function loadSettings() {
 async function saveSettings() {
   var config = await TBR.getConfig();
 
-  config.inactiveMinutes = TBR.safeParseInt(els.inactiveMinutes.value, TBR.DEFAULT_CONFIG.inactiveMinutes);
-  config.countdownSeconds = TBR.safeParseInt(els.countdownSeconds.value, TBR.DEFAULT_CONFIG.countdownSeconds);
+  var inactiveTotal = TBR.toTotalSeconds(els.inactiveHours.value, els.inactiveMinutes.value, els.inactiveSeconds.value);
+  var countdownTotal = TBR.toTotalSeconds(els.countdownHours.value, els.countdownMinutes.value, els.countdownSeconds.value);
+
+  config.inactiveThresholdSeconds = Math.max(TBR.MIN_INACTIVE_THRESHOLD_SECONDS, inactiveTotal || TBR.DEFAULT_CONFIG.inactiveThresholdSeconds);
+  config.countdownSeconds = Math.max(TBR.MIN_COUNTDOWN_SECONDS, countdownTotal || TBR.DEFAULT_CONFIG.countdownSeconds);
   config.ignorePinned = els.ignorePinned.checked;
   config.ignoreMedia = els.ignoreMedia.checked;
   config.ignoreMuted = els.ignoreMuted.checked;
@@ -57,10 +73,18 @@ async function saveSettings() {
 
   await TBR.setConfig(config);
 
-  // Reflect the sanitized/parsed values back into the fields so the user
+  // Reflect the sanitized/clamped values back into the fields so the user
   // sees exactly what was persisted.
-  els.inactiveMinutes.value = config.inactiveMinutes;
-  els.countdownSeconds.value = config.countdownSeconds;
+  var inactiveParts = TBR.fromTotalSeconds(config.inactiveThresholdSeconds);
+  els.inactiveHours.value = inactiveParts.hours;
+  els.inactiveMinutes.value = inactiveParts.minutes;
+  els.inactiveSeconds.value = inactiveParts.seconds;
+
+  var countdownParts = TBR.fromTotalSeconds(config.countdownSeconds);
+  els.countdownHours.value = countdownParts.hours;
+  els.countdownMinutes.value = countdownParts.minutes;
+  els.countdownSeconds.value = countdownParts.seconds;
+
   els.whitelist.value = config.whitelist.join("\n");
   els.blacklist.value = config.blacklist.join("\n");
 
