@@ -1,26 +1,69 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-
-<link rel="stylesheet" href="popup.css">
-
+  <meta charset="UTF-8" />
+  <title>Tab Battle Royale</title>
+  <link rel="stylesheet" href="popup.css" />
 </head>
-
 <body>
+  <div class="arena">
+    <header class="arena__header">
+      <div class="arena__brand">
+        <span class="arena__crest">⚔️</span>
+        <div>
+          <h1 class="arena__title">TAB BATTLE<br />ROYALE</h1>
+          <p class="arena__subtitle" id="statusSubtitle">Standing by...</p>
+        </div>
+      </div>
 
-<h1>⚔️ Tab Battle Royale</h1>
+      <label class="switch" title="Master power toggle">
+        <input type="checkbox" id="powerToggle" />
+        <span class="switch__track">
+          <span class="switch__thumb"></span>
+        </span>
+      </label>
+    </header>
 
-<p id="count">Loading...</p>
+    <section class="stats-grid" aria-label="Battle statistics">
+      <div class="stat-card stat-card--kill">
+        <span class="stat-card__value" id="statKilled">0</span>
+        <span class="stat-card__label">Tabs Killed</span>
+      </div>
+      <div class="stat-card stat-card--save">
+        <span class="stat-card__value" id="statSaved">0</span>
+        <span class="stat-card__label">Tabs Saved</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card__value" id="statOpenTabs">0</span>
+        <span class="stat-card__label">Open Tabs</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card__value" id="statBattles">0</span>
+        <span class="stat-card__label">Total Battles</span>
+      </div>
+    </section>
 
-<button id="refresh">
+    <section class="panel">
+      <div class="panel__header">
+        <h2 class="panel__title">☠️ Graveyard</h2>
+        <span class="panel__hint">Recently closed</span>
+      </div>
+      <ul class="graveyard" id="graveyardList">
+        <li class="graveyard__empty" id="graveyardEmpty">No fallen tabs yet.</li>
+      </ul>
+    </section>
 
-Refresh
+    <section class="actions">
+      <button class="btn btn--primary" id="forceBattleBtn">
+        🎯 Force Battle Now
+      </button>
+      <button class="btn btn--ghost" id="settingsBtn">⚙️ Settings</button>
+    </section>
 
-</button>
+    <p class="toast" id="toast" role="status" aria-live="polite"></p>
+  </div>
 
-<script src="popup.js"></script>
-
+  <script src="utils.js"></script>
+  <script src="popup.js"></script>
 </body>
-
 </html>

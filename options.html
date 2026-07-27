@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tab Battle Royale — Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="page-header">
+      <span class="page-header__crest">⚔️</span>
+      <div>
+        <h1 class="page-header__title">TAB BATTLE ROYALE</h1>
+        <p class="page-header__subtitle">Configure the rules of engagement.</p>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="card">
+        <h2 class="card__title">Timers</h2>
+        <div class="field">
+          <label for="inactiveMinutes">Inactive Minutes</label>
+          <p class="field__hint">How long a tab can sit idle before it's called into battle.</p>
+          <input type="number" id="inactiveMinutes" min="1" step="1" />
+        </div>
+        <div class="field">
+          <label for="countdownSeconds">Countdown Seconds</label>
+          <p class="field__hint">How long the tab has to respond before it's deleted.</p>
+          <input type="number" id="countdownSeconds" min="1" step="1" />
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card__title">Rules of Engagement</h2>
+        <div class="toggle-row">
+          <label class="checkbox">
+            <input type="checkbox" id="ignorePinned" />
+            <span class="checkbox__box"></span>
+            <span>Ignore Pinned Tabs</span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <label class="checkbox">
+            <input type="checkbox" id="ignoreMedia" />
+            <span class="checkbox__box"></span>
+            <span>Ignore Tabs Playing Audio</span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <label class="checkbox">
+            <input type="checkbox" id="ignoreMuted" />
+            <span class="checkbox__box"></span>
+            <span>Ignore Muted Tabs</span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <label class="checkbox">
+            <input type="checkbox" id="achievementsEnabled" />
+            <span class="checkbox__box"></span>
+            <span>Enable Achievements</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="card card--wide">
+        <h2 class="card__title">Domain Lists</h2>
+        <div class="lists">
+          <div class="field">
+            <label for="whitelist">Whitelist — never kill these domains</label>
+            <p class="field__hint">One domain per line, e.g. mail.google.com</p>
+            <textarea id="whitelist" rows="6" placeholder="example.com&#10;mail.google.com"></textarea>
+          </div>
+          <div class="field">
+            <label for="blacklist">Blacklist — prioritize killing these domains</label>
+            <p class="field__hint">These get flagged sooner than the default threshold.</p>
+            <textarea id="blacklist" rows="6" placeholder="news.example.com&#10;social.example.com"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="card card--wide">
+        <div class="card__header-row">
+          <h2 class="card__title">Achievements</h2>
+          <span class="card__hint" id="achievementProgress">0 / 0 unlocked</span>
+        </div>
+        <div class="achievements-grid" id="achievementsGrid"></div>
+      </section>
+    </main>
+
+    <footer class="footer-bar">
+      <button class="btn btn--ghost" id="resetStatsBtn">Reset Stats</button>
+      <div class="footer-bar__right">
+        <span class="save-indicator" id="saveIndicator">Saved</span>
+        <button class="btn btn--primary" id="saveBtn">💾 Save Settings</button>
+      </div>
+    </footer>
+  </div>
+
+  <script src="utils.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

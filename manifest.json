@@ -1,33 +1,35 @@
 {
   "manifest_version": 3,
   "name": "Tab Battle Royale",
-  "description": "Fight for your tabs.",
-  "version": "1.0",
-
+  "version": "1.0.0",
+  "description": "Gamify tab management. Inactive tabs get 15 seconds to prove they still matter — or they die.",
   "permissions": [
-    "tabs",
-    "storage",
-    "notifications",
     "alarms",
-    "scripting"
+    "notifications",
+    "storage",
+    "tabs",
+    "sessions"
   ],
-
   "host_permissions": [
     "<all_urls>"
   ],
-
   "background": {
-    "service_worker": "service-worker.js"
+    "service_worker": "background.js"
   },
-
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Tab Battle Royale"
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
-
+  "options_page": "options.html",
   "icons": {
-    "16": "icons/16.png",
-    "48": "icons/48.png",
-    "128": "icons/128.png"
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   }
 }
