@@ -1,8 +1,11 @@
+<img width="1600" height="960" alt="23" src="https://github.com/user-attachments/assets/667ec6d3-4729-40c7-9454-81e6af0a000c" />
 # ⚔️ Tab Battle Royale
 
 Welcome to Tab Battle Royale! This Chrome Extension gamifies your tab hoarding habits by forcing inactive tabs into a life-or-death battle for survival. 
 
 If you leave tabs sitting open and unused, the extension will find them, inject a dramatic cyberpunk overlay onto the page, and force you to actively "Save" the tab within a time limit. If you fail, the tab is ruthlessly closed.
+
+<img width="1600" height="960" alt="23" src="https://github.com/user-attachments/assets/cc968d0c-5a0e-4903-810c-75a657350cd9" />
 
 ## 🚀 Installation (Load Unpacked)
 
@@ -17,6 +20,7 @@ Since this extension uses zero frameworks, zero backend, and no build tools, ins
 7. Done! Pin the extension to your toolbar to view stats.
 
 ## 🔑 Permissions Justification
+
 
 - `tabs` & `sessions`: Required to query active/inactive tabs, close them, and fetch recently closed tabs for the Graveyard.
 - `storage`: Required to save your settings, lifetime statistics, and achievements locally.
